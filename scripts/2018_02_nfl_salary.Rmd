@@ -1,0 +1,142 @@
+---
+title: "2018_02_nfl_salary"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+require("knitr")
+knitr::opts_chunk$set(echo = TRUE)
+opts_knit$set(root.dir = rprojroot::find_rstudio_root_file()) # find project root file
+
+today <- paste(format(Sys.Date(), "%Y%m%d"))
+all_cols <- c(
+  "#e6194B", "#3cb44b", "#ffe119", "#4363d8", "#f58231",
+  "#911eb4", "#42d4f4", "#f032e6", "#bfef45", "#469990", "black"
+)
+
+
+library(tidyverse)
+library(ggplot2)
+library(sjmisc)
+library(here)
+```
+
+
+```{r}
+df <- rio::import("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2018/2018-04-09/nfl_salary.xlsx")
+colnames(df)[1] <- "Year"
+```
+
+# Summary of dataframe:
+```{r}
+sjmisc::descr(df)
+```
+
+## Investigate missing values
+```{r}
+df %>%
+  select_if(~ any(is.na(.))) %>%
+  summarise_all(~ sum(is.na(.)))
+
+df %>%
+  group_by(Year) %>%
+  summarise_all(~ sum(is.na(.)))
+
+# Maximum number of missing values for a year over all positions
+df %>%
+  group_by(Year) %>%
+  summarise_all(~ sum(is.na(.))) %>%
+  .[, 2:11] %>%
+  max()
+```
+
+## Max and min salaries per year
+```{r}
+max_val <- df %>%
+  group_by(Year) %>%
+  summarise_all(~ max(.[!is.na(.)]))
+min_val <- df %>%
+  group_by(Year) %>%
+  summarise_all(~ min(.[!is.na(.)]))
+mean_val <- df %>%
+  group_by(Year) %>%
+  summarise_all(~ mean(.[!is.na(.)]))
+```
+
+## Remove rows with missing values (NA)
+```{r}
+df_clean <- df %>% pivot_longer(cols = -Year, names_to = "Position", values_to = "Salary")
+df_clean <- drop_na(df_clean, "Salary")
+```
+
+
+# Distributions of the data
+```{r}
+ggplot(df_clean, aes(x = as.factor(Year), y = Salary)) +
+  geom_boxplot(col = "Blue") +
+  facet_wrap(~ (Position)) +
+  theme_bw() +
+  labs(x = "Year", y = "Salary", title = "Salary For Position Over Different Years") +
+  theme(plot.background = element_rect(fill = "transparent", colour = NA), panel.background = element_rect(fill = "transparent", color = NA), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_y_continuous(labels = function(n) {
+    format(n, scientific = F)
+  }) +
+  scale_x_discrete(breaks = c("2011", "2014", "2017"))
+
+ggsave(
+  filename = "2018_02_nfl_salary_01.png",
+  path = here("figs"),
+  width = 8,
+  height = 7,
+  dpi = 400,
+  units = "in"
+)
+```
+
+
+# All Salaries for Position over different years
+```{r}
+max_sal <- max_val %>%
+  pivot_longer(-Year, names_to = "Position", values_to = "Salary") %>%
+  drop_na("Salary")
+
+min_sal <- min_val %>%
+  pivot_longer(-Year, names_to = "Position", values_to = "Salary") %>%
+  drop_na("Salary")
+
+mean_sal <- mean_val %>%
+  pivot_longer(-Year, names_to = "Position", values_to = "Salary") %>%
+  drop_na("Salary")
+```
+
+
+```{r}
+ggplot(max_sal) +
+  geom_line(data = max_sal, aes(x = as.factor(Year), y = Salary, colour = Position, group = 1), lwd = 1.5, alpha = 0.55) +
+  geom_line(data = min_sal, aes(x = as.factor(Year), y = Salary, colour = Position, group = 1), lwd = 1.5, alpha = 0.55) +
+  geom_jitter(data = df_clean, aes(x = as.factor(Year), y = Salary, colour = Position, group = 1), lwd = 1.5, alpha = 0.15) +
+  geom_line(data = mean_sal, aes(x = as.factor(Year), y = Salary, group = 1), colour = "black", lwd = 1.5) +
+  facet_grid(~Position) +
+  labs(x = "Year", y = "Salary", title = "All Salaries for Position over different years  \n Max (Lines), Min (Lines), Average (Black Line), All Values (Points)") +
+  scale_colour_manual(guide = F, values = all_cols) +
+  scale_y_continuous(labels = function(n) {
+    format(n, scientific = F)
+  }) +
+  scale_x_discrete(breaks = c("2011", "2014", "2017")) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5), plot.background = element_rect(fill = "transparent", colour = NA), panel.background = element_rect(fill = "transparent", color = NA), panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+ggsave(
+  filename = "2018_02_nfl_salary_02.png",
+  path = here("figs"),
+  width = 12,
+  height = 7,
+  dpi = 400,
+  units = "in"
+)
+```
+
+
+  
+  
+  

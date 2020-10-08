@@ -1,0 +1,73 @@
+---
+title: "2018_01_ustuition"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readr)
+library(devtools)
+library(viridis)
+library(mapproj)
+library(ggplot2)
+library(rio)
+library(here)
+install_github("wmurphyrd/fiftystater")
+library(fiftystater)
+theme_set(theme_light())
+```
+
+```{r}
+df <- rio::import("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2018/2018-04-02/us_avg_tuition.xlsx")
+```
+
+```{r}
+# Make dollar amounts into numeric
+colnames(df) <- make.names(colnames(df))
+
+df_reduced <- select(df, -State)
+df_numeric <- as.data.frame(sapply(df_reduced, function(x) {
+  as.numeric(gsub("[$,]", "", x))
+}))
+df_work <- cbind(state = df$State, df_numeric)
+colnames(df_work) <- make.names(colnames(df_work))
+```
+
+```{r}
+df_growth <- df_work %>%
+  mutate(Growth = (X2015.16 - X2005.06) / X2005.06, Region = tolower(state)) %>%
+  select(state, Region, Growth)
+
+df_growth %>%
+  ggplot(aes(map_id = Region)) +
+  geom_map(aes(fill = Growth), map = fifty_states, color = "gray10") +
+  expand_limits(x = fifty_states$long, y = fifty_states$lat) +
+  coord_map() +
+  labs(
+    x = "",
+    y = "",
+    title = "% Growth in Tuition (2015-2016)"
+  ) +
+  scale_fill_viridis(
+    option = "inferno",
+    breaks = c(.025, .5, .75, 1, 1.25),
+    labels = scales::percent
+  ) +
+  scale_x_continuous(breaks = NULL) +
+  scale_y_continuous(breaks = NULL) +
+  guides(fill = guide_colorbar(barwidth = 15, barheight = .35)) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    plot.title = element_text(size = 18),
+    plot.subtitle = element_text(size = 12)
+  )
+
+ggsave(filename = "2018_01_ustuition.png",
+       path = here("figs"),
+       width = 8,
+       height = 7,
+       dpi = 400,
+       units = "in")
+```

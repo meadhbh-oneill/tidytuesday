@@ -1,0 +1,102 @@
+---
+title: "2018_03_Global_Mortality"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+require("knitr")
+knitr::opts_chunk$set(echo = TRUE)
+opts_knit$set(root.dir = rprojroot::find_rstudio_root_file()) # find project root file
+
+today <- paste(format(Sys.Date(), "%Y%m%d"))
+
+library(tidyverse)
+library(viridis)
+library(janitor)
+library(here)
+```
+
+```{r}
+# Read in data
+# Clean names with percent signs
+df <- rio::import("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2018/2018-04-16/global_mortality.xlsx")
+names(df) <- names(df) %>% gsub("\\s\\(%\\)", "", .)
+```
+
+```{r}
+# Tidy to long format data
+# Filter only 2016 and World Numbers
+df_long <- df %>%
+  pivot_longer(names_to = "cause", values_to = "percent", 4:35) %>%
+  mutate(
+    percent = percent / 100,
+    cause = fct_relevel(cause, unique(cause))
+  ) # Reorder factor levels
+```
+
+```{r}
+df_long %>%
+  filter(year == 2016, country_code == "OWID_WRL") %>%
+  mutate(cause = fct_reorder(cause, percent, min)) %>%
+  ggplot(aes(x = cause, y = percent, fill = cause)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(y = percent, label = paste0(round(percent * 100, 1), "%")),
+    hjust = -0.2, size = 3
+  ) +
+  coord_flip() +
+  guides(fill = FALSE) +
+  scale_y_continuous(
+    breaks = seq(0, .3, .05),
+    labels = scales::percent(seq(0, .3, .05), accuracy = 1),
+    expand = c(0, 0),
+    limits = c(0, 0.35)
+  ) +
+  labs(
+    title = "Share of deaths by cause, World, 2016",
+    subtitle = "Cause of death as the percentage of total deaths",
+    caption = "Source: IHME, Global Burden of Disease"
+  ) +
+  scale_fill_viridis_d(direction = -1) +
+  theme_minimal()
+theme(
+  axis.title = element_blank(),
+  plot.background = element_rect(fill = "transparent", colour = NA),
+  panel.background = element_rect(fill = "transparent", color = NA),
+  panel.grid.major = element_line(color = "gray", linetype = c("20")),
+  panel.grid.minor = element_blank()
+)
+
+ggsave(
+  filename = "2018_03_world_deaths_01.png",
+  path = here("figs"),
+  width = 8,
+  height = 6,
+  dpi = 400,
+  units = "in"
+)
+```
+
+```{r}
+df_long %>%
+  filter(country_code != "OWID_WRL", cause %in% unique(cause)[1:5]) %>%
+  ggplot(aes(x = year, y = percent)) +
+  geom_point(alpha = 0.2, colour = "gray60") +
+  facet_wrap(~cause, ncol = 5) +
+  geom_smooth(method = "loess", se = F, color = "red") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    title = "Top 5 Causes of Death Worldwide from 1990-2016",
+    subtitle = "Each point represents a country's mortality rates for the given year"
+  ) +
+  theme_minimal() +
+  theme(axis.title = element_blank())
+
+ggsave(
+  filename = "2018_03_world_deaths_02.png",
+  path = here("figs"),
+  width = 8,
+  height = 6,
+  dpi = 300,
+  units = "in"
+)
+```

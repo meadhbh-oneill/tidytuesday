@@ -9,7 +9,7 @@ __Click on image to go to code__
 <div class="row">
   <div class="column">
     <a href="scripts/2018_03_world_deaths.Rmd"><img src="figs/2018_03_world_deaths_02.png"></a>
-     <a href="scripts/2018_03_world_deaths.Rmd"><img src="figs/2018_03_wolrd_deaths_01.png"></a>
+     <a href="scripts/2018_03_world_deaths.Rmd"><img src="figs/2018_03_world_deaths_01.png"></a>
   </div>
 </div>
 
